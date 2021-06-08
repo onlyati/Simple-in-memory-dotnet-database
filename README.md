@@ -17,18 +17,18 @@ It is a key-value type database. Key can be specified like file path, which can 
 
 But to explain how it is stored internal, let us say, that following key-value pairs are stored in this database:
 ```
-settings/port-master 10245
-settings/port-slave 10246
-settings/port-agent 10247
-settings/target-list host1.com host2.com host3.com
-settings/log-path /var/log/app.log
-monitor/memory on
-monitor/memory/limit 8000
-monitor/docker on
-monitor/docker/list gitlab pgadmin postgres
-monitor/docker/gitlab-status ok
-monitor/docker/pgadmin-status ok
-monitor/docker/postgres-status ok
+settings/port-master            10245
+settings/port-slave             10246
+settings/port-agent             10247
+settings/target-list            host1.com host2.com host3.com
+settings/log-path               /var/log/app.log
+monitor/memory                  on
+monitor/memory/limit            8000
+monitor/docker                  on
+monitor/docker/list             gitlab pgadmin postgres
+monitor/docker/gitlab-status    ok
+monitor/docker/pgadmin-status   ok
+monitor/docker/postgres-status  ok
 ```
 These variables are stored in the following hierarchy:
 ```
