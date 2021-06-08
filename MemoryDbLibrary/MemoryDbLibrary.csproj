@@ -2,6 +2,13 @@
 
   <PropertyGroup>
     <TargetFramework>net5.0</TargetFramework>
+    <Authors>Attila Molnár</Authors>
+    <Description>It is a simple light key-value in-memory database.</Description>
+    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+    <RepositoryUrl>https://github.com/onlyati/Simple-in-memory-dotnet-database</RepositoryUrl>
+    <PackageId>OnlyAti.MemoryDbLibrary</PackageId>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageTags>database, in-memory</PackageTags>
   </PropertyGroup>
 
 </Project>
