@@ -89,7 +89,7 @@ var allRecord = db.ListAll();
 // - settings/port-agent 10247
 // - settings/target-list host1.com host2.com host3.com
 // - settings/log-path /var/log/app.log
-var settings = db.ListDir("settings");
+Dictionary<string, string> settings = db.ListDir("settings");
 
 // Find only for a specific entry. If variable does not exist then gitStatus.Value is null
 (string Key, string Value) gitStatus = db.Select("monitor/docker/gitlab-status");
