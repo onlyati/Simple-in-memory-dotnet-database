@@ -81,7 +81,7 @@ db.Add("test1/sub1/val1", null);
 **List and select records**
 ```cs
 // List every record
-var allRecord = db.ListAll();
+Dictionary<string, string> allRecord = db.ListAll();
 
 // List every record under specified path
 // This command would put these items into a dictionary and return with it:
