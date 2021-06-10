@@ -9,6 +9,12 @@
     <PackageId>OnlyAti.MemoryDbLibrary</PackageId>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageTags>database, in-memory</PackageTags>
+    <Version>1.0.1</Version>
+    <PackageReleaseNotes>1.0.1
+-----
+File checking functions is imporved
+Purge function is added</PackageReleaseNotes>
+    <RepositoryType>github</RepositoryType>
   </PropertyGroup>
 
 </Project>
