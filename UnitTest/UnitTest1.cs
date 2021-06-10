@@ -267,5 +267,21 @@ namespace UnitTest
 
             Assert.AreEqual(same, true, "Database did not send the same values back");
         }
+
+        [TestMethod]
+        public void PurgeFromFile()
+        {
+            MemoryDb db1 = new MemoryDb("purge-test.txt");
+
+            db1.Add("test1/valami", "Here is the value");
+            var respond = db1.Save("test1/valami");
+            Assert.AreEqual(true, respond.Status, "Variable save did not work");
+
+            respond = db1.Purge("test1/valami");
+            Assert.AreEqual(true, respond.Status, "Variable purge did not work");
+
+            respond = db1.Load(true, "test1/valami");
+            Assert.AreEqual(false, respond.Status, respond.Message);
+        }
     }
 }

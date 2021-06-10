@@ -38,7 +38,37 @@ namespace MemoryDbLibrary
         /// This function can tell that persistent storage is active
         /// </summary>
         /// <returns>True or false</returns>
-        public bool IsPersistentStorageEnabled() => _filePath != null ? true : false;
+        public bool IsPersistentStorageEnabled()
+        {
+            bool output = _filePath == null ? true : false;
+            if (output)
+                return false;
+
+            if (!File.Exists(_filePath))
+            {
+                try
+                {
+                    var fs1 = File.Create(_filePath);
+                    fs1.Close();
+                }
+                catch
+                {
+                    return false;
+                }
+            }
+
+            try
+            {
+                FileStream fs = new FileStream(_filePath, FileMode.Open, FileAccess.ReadWrite);
+                fs.Close();
+            }
+            catch
+            {
+                return false;
+            }
+
+            return true;
+        }
         #endregion
 
         #region Save record into file
@@ -112,9 +142,6 @@ namespace MemoryDbLibrary
             if (!IsPersistentStorageEnabled())
                 return (false, "Persistent storage is not allowed");
 
-            if (!File.Exists(_filePath))
-                return (false, "Persistent storage could not located");
-
             string previousData = File.ReadAllText(_filePath);
 
             GlobalVariableList jsonObejct = new GlobalVariableList();
@@ -163,9 +190,6 @@ namespace MemoryDbLibrary
             if (!IsPersistentStorageEnabled())
                 return (false, "Persistent storage is not allowed");
 
-            if (!File.Exists(_filePath))
-                return (false, "Persistent storage could not located");
-
             string previousData = File.ReadAllText(_filePath);
 
             GlobalVariableList jsonObejct = new GlobalVariableList();
@@ -206,6 +230,47 @@ namespace MemoryDbLibrary
             }
 
             return (true, "Variable is loaded");
+        }
+        #endregion
+
+        #region Purge variable from file
+        public (bool Status, string Message) Purge(string key)
+        {
+            if (string.IsNullOrEmpty(key) || string.IsNullOrWhiteSpace(key))
+                return (false, "Key must be specified");
+
+            string previousData = File.ReadAllText(_filePath);
+
+            GlobalVariableList jsonObejct = new GlobalVariableList();
+
+            if (string.IsNullOrEmpty(previousData) || string.IsNullOrWhiteSpace(previousData))
+                return (false, "File is empty");
+            else
+            {
+                try
+                {
+                    jsonObejct = JsonSerializer.Deserialize<GlobalVariableList>(previousData);
+                }
+                catch (Exception ex)
+                {
+                    return (false, ex.Message);
+                }
+            }
+
+            var foundOne = jsonObejct.List.Where(w => w.Key == key).Select(s => s).FirstOrDefault();
+
+            if(foundOne != null)
+            {
+                jsonObejct.List.Remove(foundOne);
+                var outJson = JsonSerializer.Serialize(jsonObejct);
+                File.WriteAllText(_filePath, outJson);
+            }
+            else
+            {
+                return (false, "Variable did not exist in the file");
+            }
+
+            return (true, "Variable is purged from file");
         }
         #endregion
 
