@@ -244,6 +244,15 @@ namespace MemoryDbLibrary
         #endregion
 
         #region Purge variable from file
+        /// <summary>
+        /// Remove records from the persistent storage
+        /// </summary>
+        /// <param name="key">Key of the record</param>
+        /// <returns>
+        /// It return with a tuple: <para/>
+        /// <b>bool Status:</b> true or falsestring<para/>
+        /// <b>string Message:</b> explanation message
+        /// </returns>
         public (bool Status, string Message) Purge(string key)
         {
             if (string.IsNullOrEmpty(key) || string.IsNullOrWhiteSpace(key))
