@@ -119,7 +119,6 @@ db.RemoveDir("monitor/docker");
 // Load everything from file
 (bool Status, string Message) save = db.LoadAll(true);
 
-// Delete record from file
-(bool Status, string Message) purge = db.Purge("settings/port-master");
+
 ```
 
