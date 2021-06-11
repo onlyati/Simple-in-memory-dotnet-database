@@ -1,6 +1,9 @@
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using MemoryDbLibrary;
 using System.Collections.Generic;
+using System.IO;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace UnitTest
 {
@@ -282,6 +285,67 @@ namespace UnitTest
 
             respond = db1.Load(true, "test1/valami");
             Assert.AreEqual(false, respond.Status, respond.Message);
+        }
+
+        [TestMethod]
+        public void JsonRecordDuplicate()
+        {
+            MemoryDb db1 = new MemoryDb("duplicate-test.json");
+
+            db1.Add("test/valami", "Here is the value");
+            db1.Save("test/valami");
+            db1.Save("test/valami");
+
+            string jsonString = File.ReadAllText("duplicate-test.json");
+            var records = JsonSerializer.Deserialize<GlobalVariableList>(jsonString);
+
+            Assert.AreEqual(1, records.List.Count, "Not one records was saved into file");
+        }
+    }
+
+    public class GlobalVariableList
+    {
+        [JsonPropertyName("VariableName")]
+        public List<GlobalVariable> List { get; set; }
+    }
+
+    public class GlobalVariable
+    {
+        [JsonPropertyName("key")]
+        public string Key { get; set; }
+
+        [JsonPropertyName("value")]
+        public string Value { get; set; }
+
+        [JsonIgnore]
+        public List<string> Keys { get; set; } = new List<string>();
+
+        [JsonConstructor]
+        public GlobalVariable(string key)
+        {
+            Key = key;
+            string[] temp = key.Split("/");
+            if (key != null)
+            {
+                foreach (var item in temp)
+                {
+                    Keys.Add(item);
+                }
+            }
+        }
+
+        public GlobalVariable(string _key, string _value)
+        {
+            Key = _key;
+            Value = _value;
+            if (_key != null)
+            {
+                string[] temp = _key.Split("/");
+                foreach (var item in temp)
+                {
+                    Keys.Add(item);
+                }
+            }
         }
     }
 }
