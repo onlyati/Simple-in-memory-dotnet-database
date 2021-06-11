@@ -116,7 +116,17 @@ namespace MemoryDbLibrary
             if (foundOne.Value == null)
                 return (false, "Variable does not exist");
 
-            if (!jsonObejct.List.Contains(new GlobalVariable(foundOne.Key, foundOne.Value)))
+            bool found = false;
+            foreach (var item in jsonObejct.List)
+            {
+                if(item.Key == foundOne.Key && item.Value == foundOne.Value)
+                {
+                    found = true;
+                    break;
+                }
+            }
+
+            if (!found)
             {
                 jsonObejct.List.Add(new GlobalVariable(foundOne.Key, foundOne.Value));
                 string newData = JsonSerializer.Serialize(jsonObejct);
@@ -554,13 +564,11 @@ namespace MemoryDbLibrary
                     {
                         if (input.Keys.Count > 1)
                         {
-                            Console.WriteLine($"Found node: {list[i].Key}");
                             input.Keys.RemoveAt(0);
                             PurgeDir(input, list[i].SubList);
                             break;
                         }
 
-                        Console.WriteLine($"Purge beginning: {list[i].Key}");
                         PurgeAll(list[i].SubList);
                         list.RemoveAt(i);
                         break;

@@ -116,10 +116,9 @@ db.RemoveDir("monitor/docker");
 // Second paramater: record key
 (bool Status, string Message) save = db.Load(true, "settings/port-master");
 
-// Load eveerything from file
+// Load everything from file
 (bool Status, string Message) save = db.LoadAll(true);
 
-// Delete saved record from file
-(bool Status, string Message) purge = db.Purge("settings/port-master");
+
 ```
 
