@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
@@ -11,6 +12,11 @@ namespace MemoryDbLibrary
     public class MemoryDb
     {
         List<GlobalVariableNode> _mainList = new List<GlobalVariableNode>();
+
+        List<DbMetricItem> _metricList = new List<DbMetricItem>();
+        static Mutex _metricMutex = new Mutex();
+        bool _metricEnabled = false;
+
         string _filePath;
         static Mutex mutex = new Mutex();
 
@@ -32,6 +38,83 @@ namespace MemoryDbLibrary
             _filePath = filePath;
         }
         #endregion Deconstructors
+
+        #region Metrics
+        /// <summary>
+        /// Return with a logical value which represents status of metrics
+        /// </summary>
+        /// <returns>True or false</returns>
+        public bool IsMetricEnabled() => _metricEnabled;
+
+        /// <summary>
+        /// Enable metrics
+        /// </summary>
+        public void EnableMetric() => _metricEnabled = true;
+
+        /// <summary>
+        /// Disable metrics
+        /// </summary>
+        public void DisableMetric() => _metricEnabled = false;
+
+        /// <summary>
+        /// Function clear the metrics list and return with its value
+        /// </summary>
+        /// <returns>List which contains the metrics</returns>
+        public List<DbMetricItem> DumpMerics()
+        {
+            List<DbMetricItem> ret = new List<DbMetricItem>();
+            _metricMutex.WaitOne();
+            foreach (var item in _metricList)
+            {
+                ret.Add(item);
+            }
+            _metricList.Clear();
+            _metricMutex.ReleaseMutex();
+
+            return ret;
+        }
+
+        private Stopwatch InitMetrics()
+        {
+            if (_metricEnabled)
+            {
+                Stopwatch sw = new Stopwatch();
+                return sw;
+            }
+            else
+                return null;
+        }
+
+        private void StartMetrics(Stopwatch sw)
+        {
+            if (sw != null)
+                sw.Start();
+        }
+
+        private void EndMetrics(Stopwatch sw, string comment, string key, int processedItems, string type)
+        {
+            if (sw != null)
+            {
+                sw.Stop();
+                DbMetricItem metric = new DbMetricItem();
+                metric.Comment = comment;
+                metric.Key = key;
+                metric.ProcessedItems = processedItems;
+                metric.Type = type;
+                metric.ElapsedMilliseconds = sw.ElapsedMilliseconds;
+                try
+                {
+                    _metricMutex.WaitOne();
+                    _metricList.Add(metric);
+                    _metricMutex.ReleaseMutex();
+                }
+                catch
+                {
+                    _metricMutex.ReleaseMutex();
+                }
+            }
+        }
+        #endregion
 
         #region Others
         /// <summary>
@@ -83,11 +166,20 @@ namespace MemoryDbLibrary
         /// </returns>
         public (bool Status, string Message) Save(string key)
         {
+            var sw = InitMetrics();
+            StartMetrics(sw);
+
             if (string.IsNullOrEmpty(key) || string.IsNullOrWhiteSpace(key))
+            {
+                EndMetrics(sw, "Failed", key, 0, "Save");
                 return (false, "Key is not specified");
+            }
 
             if (!IsPersistentStorageEnabled())
+            {
+                EndMetrics(sw, "Failed", key, 0, "Save");
                 return (false, "Persistent storage is not allowed");
+            }
 
             GlobalVariableList jsonObejct = new GlobalVariableList();
 
@@ -104,6 +196,7 @@ namespace MemoryDbLibrary
                     }
                     catch (Exception ex)
                     {
+                        EndMetrics(sw, "Failed", key, 0, "Save");
                         return (false, ex.Message);
                     }
                 }
@@ -114,7 +207,10 @@ namespace MemoryDbLibrary
             var foundOne = Select(key);
 
             if (foundOne.Value == null)
+            {
+                EndMetrics(sw, "Failed", key, 0, "Save");
                 return (false, "Variable does not exist");
+            }
 
             bool found = false;
             foreach (var item in jsonObejct.List)
@@ -133,6 +229,7 @@ namespace MemoryDbLibrary
                 File.WriteAllText(_filePath, newData);
             }
 
+            EndMetrics(sw, "Done", key, 0, "Save");
             return (true, "Variable is saved");
         }
         #endregion
@@ -149,15 +246,24 @@ namespace MemoryDbLibrary
         /// </returns>
         public (bool Status, string Message) LoadAll(bool replaceValues)
         {
+            var sw = InitMetrics();
+            StartMetrics(sw);
+
             if (!IsPersistentStorageEnabled())
+            {
+                EndMetrics(sw, $"Failed/Replace={replaceValues}", null, 0, "LoadAll");
                 return (false, "Persistent storage is not allowed");
+            }
 
             string previousData = File.ReadAllText(_filePath);
 
             GlobalVariableList jsonObejct = new GlobalVariableList();
 
             if (string.IsNullOrEmpty(previousData) || string.IsNullOrWhiteSpace(previousData))
+            {
+                EndMetrics(sw, $"Failed/Replace={replaceValues}", null, 0, "LoadAll");
                 return (false, "File is empty");
+            }
             else
             {
                 try
@@ -166,6 +272,7 @@ namespace MemoryDbLibrary
                 }
                 catch (Exception ex)
                 {
+                    EndMetrics(sw, $"Failed/Replace={replaceValues}", null, 0, "LoadAll");
                     return (false, ex.Message);
                 }
             }
@@ -182,6 +289,7 @@ namespace MemoryDbLibrary
                     Add(item.Key, item.Value);
             }
 
+            EndMetrics(sw, $"Done/Replace={replaceValues}", null, 0, "LoadAll");
             return (true, "Variables are loaded");
         }
 
@@ -197,15 +305,24 @@ namespace MemoryDbLibrary
         /// </returns>
         public (bool Status, string Message) Load(bool replaceValues, string key)
         {
+            var sw = InitMetrics();
+            StartMetrics(sw);
+
             if (!IsPersistentStorageEnabled())
+            {
+                EndMetrics(sw, $"Failed/Replace={replaceValues}", key, 0, "Load");
                 return (false, "Persistent storage is not allowed");
+            }
 
             string previousData = File.ReadAllText(_filePath);
 
             GlobalVariableList jsonObejct = new GlobalVariableList();
 
             if (string.IsNullOrEmpty(previousData) || string.IsNullOrWhiteSpace(previousData))
+            {
+                EndMetrics(sw, $"Failed/Replace={replaceValues}", key, 0, "Load");
                 return (false, "File is empty");
+            }
             else
             {
                 try
@@ -228,7 +345,10 @@ namespace MemoryDbLibrary
                     if (selectOne.Value == null)
                         Add(foundOne.Key, foundOne.Value);
                     else
+                    {
+                        EndMetrics(sw, $"Failed/Replace={replaceValues}", key, 0, "Load");
                         return (false, "Variable already exist and override is not allowed");
+                    }
                 }
                 else
                     Add(foundOne.Key, foundOne.Value);
@@ -236,9 +356,11 @@ namespace MemoryDbLibrary
             }
             else
             {
+                EndMetrics(sw, $"Failed/Replace={replaceValues}", key, 0, "Load");
                 return (false, "Variable could not located in the file");
             }
 
+            EndMetrics(sw, $"Done/Replace={replaceValues}", key, 0, "Load");
             return (true, "Variable is loaded");
         }
         #endregion
@@ -255,15 +377,24 @@ namespace MemoryDbLibrary
         /// </returns>
         public (bool Status, string Message) Purge(string key)
         {
+            var sw = InitMetrics();
+            StartMetrics(sw);
+
             if (string.IsNullOrEmpty(key) || string.IsNullOrWhiteSpace(key))
+            {
+                EndMetrics(sw, "Failed", key, 0, "Purge");
                 return (false, "Key must be specified");
+            }
 
             string previousData = File.ReadAllText(_filePath);
 
             GlobalVariableList jsonObejct = new GlobalVariableList();
 
             if (string.IsNullOrEmpty(previousData) || string.IsNullOrWhiteSpace(previousData))
+            {
+                EndMetrics(sw, "Failed", key, 0, "Purge");
                 return (false, "File is empty");
+            }
             else
             {
                 try
@@ -286,9 +417,11 @@ namespace MemoryDbLibrary
             }
             else
             {
+                EndMetrics(sw, "Failed", key, 0, "Purge");
                 return (false, "Variable did not exist in the file");
             }
 
+            EndMetrics(sw, "Done", key, 0, "Purge");
             return (true, "Variable is purged from file");
         }
         #endregion
@@ -301,6 +434,10 @@ namespace MemoryDbLibrary
         /// <param name="value">Value of record</param>
         public void Add(string key, string value)
         {
+            var sw = InitMetrics();
+            StartMetrics(sw);
+            int processedItems = 0;
+
             try
             {
                 GlobalVariable variable = new GlobalVariable(key, value);
@@ -309,21 +446,28 @@ namespace MemoryDbLibrary
                     variable.Value = null;
 
                 if (variable.Keys.Count == 0)
+                {
+                    EndMetrics(sw, "Failed", key, processedItems, "Add");
                     return;
+                }
 
                 mutex.WaitOne();
-                _mainList = SetVariable(variable, _mainList);
+                _mainList = SetVariable(variable, _mainList, ref processedItems);
                 mutex.ReleaseMutex();
+
+                EndMetrics(sw, "Done", key, processedItems, "Add");
             }
             catch
             {
+                EndMetrics(sw, "Failed", key, processedItems, "Add");
                 mutex.ReleaseMutex();
             }
         }
 
-        private List<GlobalVariableNode> SetVariable(GlobalVariable input, List<GlobalVariableNode> list)
+        private List<GlobalVariableNode> SetVariable(GlobalVariable input, List<GlobalVariableNode> list, ref int processedItems)
         {
             var foundNode = list.Where(w => w.Key == input.Keys[0]).Select(s => s).FirstOrDefault();
+            processedItems += list.Count;
 
             if (foundNode == null)
             {
@@ -336,7 +480,7 @@ namespace MemoryDbLibrary
                 list.Add(newOne);
                 input.Keys.RemoveAt(0);
                 if (input.Keys.Count > 0)
-                    newOne.SubList = SetVariable(input, newOne.SubList);
+                    newOne.SubList = SetVariable(input, newOne.SubList, ref processedItems);
             }
             else
             {
@@ -349,7 +493,7 @@ namespace MemoryDbLibrary
 
                 input.Keys.RemoveAt(0);
                 if (input.Keys.Count > 0)
-                    foundNode.SubList = SetVariable(input, foundNode.SubList);
+                    foundNode.SubList = SetVariable(input, foundNode.SubList, ref processedItems);
             }
 
             return list;
@@ -363,6 +507,9 @@ namespace MemoryDbLibrary
         /// <returns>Dictionary which contains the key-value pairs</returns>
         public Dictionary<string, string> ListAll()
         {
+            var sw = InitMetrics();
+            StartMetrics(sw);
+
             try
             {
                 mutex.WaitOne();
@@ -375,10 +522,12 @@ namespace MemoryDbLibrary
                     output.Add(item.Key, item.Value);
                 }
 
+                EndMetrics(sw, "Done", null, output.Count, "ListAll");
                 return output;
             }
             catch
             {
+                EndMetrics(sw, "Failed", null, 0, "ListAll");
                 mutex.ReleaseMutex();
                 return null;
             }
@@ -412,36 +561,46 @@ namespace MemoryDbLibrary
         /// </returns>
         public (string Key, string Value) Select(string key)
         {
+            var sw = InitMetrics();
+            StartMetrics(sw);
+            int processedItems = 0;
+
             try
             {
                 GlobalVariable output = new GlobalVariable(key);
                 if (output.Keys.Count == 0)
+                {
+                    EndMetrics(sw, "Failed", key, 0, "Select");
                     return (key, null);
+                }
 
                 mutex.WaitOne();
-                output.Value = SelectValue(output, _mainList);
+                output.Value = SelectValue(output, _mainList, ref processedItems);
                 mutex.ReleaseMutex();
 
+                EndMetrics(sw, "Done", key, processedItems, "Select");
                 return (output.Key, output.Value);
             }
             catch
             {
+                EndMetrics(sw, "Failed", key, processedItems, "Select");
                 mutex.ReleaseMutex();
                 return (null, null);
             }
         }
 
-        private string SelectValue(GlobalVariable input, List<GlobalVariableNode> list)
+        private string SelectValue(GlobalVariable input, List<GlobalVariableNode> list, ref int processedItems)
         {
             string output = null;
 
             foreach (var item in list)
             {
+                processedItems++;
                 if (item.Key == input.Keys[0])
                 {
                     input.Keys.RemoveAt(0);
                     if (input.Keys.Count > 0)
-                        output = SelectValue(input, item.SubList);
+                        output = SelectValue(input, item.SubList, ref processedItems);
                     else
                         output = item.Value;
 
@@ -461,14 +620,21 @@ namespace MemoryDbLibrary
         /// <returns>Dictionary which contains the key-value pairs</returns>
         public Dictionary<string, string> ListDir(string key)
         {
+            var sw = InitMetrics();
+            StartMetrics(sw);
+            int processedItems = 0;
+
             try
             {
                 GlobalVariable input = new GlobalVariable(key);
                 if (input.Keys.Count == 0)
+                {
+                    EndMetrics(sw, "Failed", key, 0, "ListDir");
                     return null;
+                }
 
                 mutex.WaitOne();
-                var list = PrintDir(input, _mainList);
+                var list = PrintDir(input, _mainList, ref processedItems);
                 mutex.ReleaseMutex();
 
                 Dictionary<string, string> output = new Dictionary<string, string>();
@@ -477,31 +643,36 @@ namespace MemoryDbLibrary
                     output.Add(item.Key, item.Value);
                 }
 
+                EndMetrics(sw, "Done", key, processedItems, "ListDir");
                 return output;
             }
             catch
             {
+                EndMetrics(sw, "Failed", key, processedItems, "ListDir");
                 mutex.ReleaseMutex();
                 return null;
             }
         }
 
-        private List<GlobalVariable> PrintDir(GlobalVariable input, List<GlobalVariableNode> list)
+        private List<GlobalVariable> PrintDir(GlobalVariable input, List<GlobalVariableNode> list, ref int processedItems)
         {
             List<GlobalVariable> output = new List<GlobalVariable>();
 
             foreach (var item in list)
             {
+                processedItems++;
                 if (item.Key == input.Keys[0])
                 {
                     input.Keys.RemoveAt(0);
                     if (input.Keys.Count > 0)
-                        output = PrintDir(input, item.SubList);
+                        output = PrintDir(input, item.SubList, ref processedItems);
                     else
                     {
                         output = PrintAll($"{input.Key}/", item.SubList);
                         if (item.Value != null)
                             output.Insert(0, new GlobalVariable(input.Key, item.Value));
+
+                        processedItems += output.Count + 1;
                     }
 
                     break;
@@ -518,23 +689,31 @@ namespace MemoryDbLibrary
         /// </summary>
         public void RemoveAll()
         {
+            var sw = InitMetrics();
+            StartMetrics(sw);
+            int processedItems = 0;
+
             try
             {
                 mutex.WaitOne();
-                PurgeAll(_mainList);
+                PurgeAll(_mainList, ref processedItems);
                 mutex.ReleaseMutex();
+
+                EndMetrics(sw, "Done", null, processedItems, "RemoveAll");
             }
             catch
             {
+                EndMetrics(sw, "Failed", null, processedItems, "RemoveAll");
                 mutex.ReleaseMutex();
             }
         }
 
-        private void PurgeAll(List<GlobalVariableNode> list)
+        private void PurgeAll(List<GlobalVariableNode> list, ref int processedItems)
         {
             for (int i = list.Count - 1; i >= 0; i--)
             {
-                PurgeAll(list[i].SubList);
+                processedItems++;
+                PurgeAll(list[i].SubList, ref processedItems);
                 list.RemoveAt(i);
             }
         }
@@ -547,26 +726,37 @@ namespace MemoryDbLibrary
         /// <param name="key">Index path</param>
         public void RemoveDir(string key)
         {
+            var sw = InitMetrics();
+            StartMetrics(sw);
+            int processedItems = 0;
+
             try
             {
                 GlobalVariable input = new GlobalVariable(key);
                 if (input.Keys.Count == 0)
+                {
+                    EndMetrics(sw, "Failed", key, processedItems, "RemoveDir");
                     return;
+                }
 
                 mutex.WaitOne();
-                PurgeDir(input, _mainList);
+                PurgeDir(input, _mainList, ref processedItems);
                 mutex.ReleaseMutex();
+
+                EndMetrics(sw, "Done", key, processedItems, "RemoveDir");
             }
             catch
             {
+                EndMetrics(sw, "Failed", key, processedItems, "RemoveDir");
                 mutex.ReleaseMutex();
             }
         }
 
-        private void PurgeDir(GlobalVariable input, List<GlobalVariableNode> list)
+        private void PurgeDir(GlobalVariable input, List<GlobalVariableNode> list, ref int processedItems)
         {
             for (int i = list.Count - 1; i >= 0; i--)
             {
+                processedItems++;
                 if (input.Keys.Count > 0)
                 {
                     if (input.Keys[0] == list[i].Key)
@@ -574,11 +764,11 @@ namespace MemoryDbLibrary
                         if (input.Keys.Count > 1)
                         {
                             input.Keys.RemoveAt(0);
-                            PurgeDir(input, list[i].SubList);
+                            PurgeDir(input, list[i].SubList, ref processedItems);
                             break;
                         }
 
-                        PurgeAll(list[i].SubList);
+                        PurgeAll(list[i].SubList, ref processedItems);
                         list.RemoveAt(i);
                         break;
                     }
@@ -655,5 +845,18 @@ namespace MemoryDbLibrary
             }
         }
         #endregion
+    }
+
+    public class DbMetricItem
+    {
+        public string Type { get; set; }
+
+        public long ElapsedMilliseconds { get; set; }
+
+        public int ProcessedItems { get; set; }
+
+        public string Key { get; set; }
+
+        public string Comment { get; set; }
     }
 }
