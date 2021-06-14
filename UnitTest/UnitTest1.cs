@@ -301,6 +301,48 @@ namespace UnitTest
 
             Assert.AreEqual(1, records.List.Count, "Not one records was saved into file");
         }
+
+        [TestMethod]
+        public void MetricTest1()
+        {
+            MemoryDb db1 = new MemoryDb();
+
+            Assert.AreEqual(false, db1.IsMetricEnabled(), "Metric is not false by default");
+
+            db1.EnableMetric();
+            Assert.AreEqual(true, db1.IsMetricEnabled(), "Metric did not enabled");
+
+            db1.DisableMetric();
+            Assert.AreEqual(false, db1.IsMetricEnabled(), "Metric did not disabled");
+        }
+
+        [TestMethod]
+        public void MetricTest2()
+        {
+            MemoryDb db1 = new MemoryDb();
+
+            db1.Add("test/valami", "Érték mindeütt");
+            db1.Add("test/valami2", "Érték mindeütt");
+            db1.Add("test/valami3", "Érték mindeütt");
+
+            var metric = db1.DumpMerics();
+            Assert.AreEqual(0, metric.Count, "There was metric although it was disabled by default");
+        }
+
+        [TestMethod]
+        public void MetricTest3()
+        {
+            MemoryDb db1 = new MemoryDb();
+
+            db1.EnableMetric();
+
+            db1.Add("test/valami", "Érték mindeütt");
+            db1.Add("test/valami2", "Érték mindeütt");
+            db1.Add("test/valami3", "Érték mindeütt");
+
+            var metric = db1.DumpMerics();
+            Assert.AreNotEqual(0, metric.Count, "There was no mesured metric data");
+        }
     }
 
     public class GlobalVariableList
