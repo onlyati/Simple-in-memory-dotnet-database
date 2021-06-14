@@ -60,7 +60,7 @@ namespace MemoryDbLibrary
         /// Function clear the metrics list and return with its value
         /// </summary>
         /// <returns>List which contains the metrics</returns>
-        public List<DbMetricItem> DumpMerics()
+        public List<DbMetricItem> DumpMetrics()
         {
             List<DbMetricItem> ret = new List<DbMetricItem>();
             _metricMutex.WaitOne();

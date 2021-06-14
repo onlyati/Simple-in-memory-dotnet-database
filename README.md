@@ -10,6 +10,7 @@ It is a light engine with some simple actions. Action what it can execute:
 - List subrecords
 - Save records into file as persistent storage
 - Load records from file
+- Measure some metrics
 
 ## How data is stored
 
@@ -122,4 +123,42 @@ db.RemoveDir("monitor/docker");
 // Delete record from file
 (bool Status, string Message) purge = db.Purge("settings/port-master");
 ```
+
+## Metrics
+
+It is possible to record some metric data. By default metrics are disabled. It can be manipulated by the following commands:
+```cs
+// Get status of metric enablement
+bool metric = db.IsMetricEnabled();
+
+// Turn on or off metric
+db.EnableMetric();
+db.DisableMetric();
+
+// Dump the metric data: data is returned and pruged from MemoryDb memory
+List<DbMetricItem> metrics = db.DumpMetrics();
+```
+
+Metrics are recorded into the following model:
+```cs
+public class DbMetricItem
+{
+    public string Type { get; set; }
+
+    public long ElapsedMilliseconds { get; set; }
+
+    public int ProcessedItems { get; set; }
+
+    public string Key { get; set; }
+
+    public string Comment { get; set; }
+}
+```
+
+Where:
+- <strong>Type: </strong>type is equal with the method name what was called. For example: PrintAll, Select, RemoveAll, etc.
+- <strong>ElapsedMilliseconds: </strong>total time while the request was done
+- <strong>ProcessedItems: </strong>it tells, how many records has been checked during query or update
+- <strong>Key: </strong>key value at those methods where applicable, else null
+- <strong>Comment: </strong>It is "Done" of call was complete, else "Failed"
 

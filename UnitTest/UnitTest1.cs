@@ -325,7 +325,7 @@ namespace UnitTest
             db1.Add("test/valami2", "Érték mindeütt");
             db1.Add("test/valami3", "Érték mindeütt");
 
-            var metric = db1.DumpMerics();
+            var metric = db1.DumpMetrics();
             Assert.AreEqual(0, metric.Count, "There was metric although it was disabled by default");
         }
 
@@ -340,7 +340,7 @@ namespace UnitTest
             db1.Add("test/valami2", "Érték mindeütt");
             db1.Add("test/valami3", "Érték mindeütt");
 
-            var metric = db1.DumpMerics();
+            var metric = db1.DumpMetrics();
             Assert.AreNotEqual(0, metric.Count, "There was no mesured metric data");
         }
     }
